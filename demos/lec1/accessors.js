@@ -1,10 +1,10 @@
 const trends = {
     code: "INFO1998",
-    location: "Upson 222",
-    instructors: ["Chris", "Simon"],
+    location: "Gates 114",
+    instructors: ["Simon", "Oscar", "Chris"],
     "ugly property name": "pretty_result",
     schedule: {
-        day: "Wednesday",
+        day: "Monday",
         start_time: "7:30PM",
         end_time: "8:45PM",
     },
