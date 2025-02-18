@@ -21,6 +21,7 @@ console.log([first, third, rest].join("---"));
 function printPersonInfo({ name, age }) {
     console.log(`${name} is ${age} years old.`);
 }
+
 printPersonInfo({ name: "Alice", age: 30 });
 
 // Combining spread and destructuring
