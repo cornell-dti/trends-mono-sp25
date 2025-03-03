@@ -1,9 +1,13 @@
 type CourseCardProps = {
   course: Course;
+  onClick?: (course: Course) => void;
 };
 
-const CourseCard = ({ course }: CourseCardProps) => (
-  <div className="courseCard">
+const CourseCard = ({ course, onClick }: CourseCardProps) => (
+  <div
+    className="courseCard"
+    onClick={onClick ? () => onClick(course) : undefined}
+  >
     <p className="courseCode">
       {course.subject} {course.catalogNbr}
     </p>

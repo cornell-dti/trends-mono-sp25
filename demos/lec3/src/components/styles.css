@@ -6,6 +6,10 @@
   box-shadow: 0 0 10px 4px #efefef;
 }
 
+.courseCard:hover {
+  background-color: #d8d8d8;
+}
+
 .courseCode {
   color: rgb(133, 133, 133);
   font-size: 14px;

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import "./styles.css";
 import { COURSES } from "../constants/consts";
 import Dropdown from "./Dropdown";
 import CourseCard from "./CourseCard";
@@ -29,7 +28,10 @@ const Semester = ({ name }: SemesterProps) => {
         />
       </div>
       {courses.map((course) => (
-        <CourseCard course={course} />
+        <CourseCard
+          course={course}
+          onClick={(course) => setCourses(courses.filter((c) => c != course))}
+        />
       ))}
     </div>
   );

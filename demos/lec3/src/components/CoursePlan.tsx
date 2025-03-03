@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Semester from "./Semester";
+import "./styles.css";
 
 const CoursePlan = () => {
   const [semesterCount, setSemesterCount] = useState<number>(1);
