@@ -1,20 +1,14 @@
-import { useEffect, useState } from "react";
-import { COURSES } from "../constants/consts";
+import { useState } from "react";
 import Dropdown from "./Dropdown";
 import CourseCard from "./CourseCard";
 
 type SemesterProps = {
   name: string;
+  allCourses: Course[];
 };
 
-const Semester = ({ name }: SemesterProps) => {
+const Semester = ({ name, allCourses }: SemesterProps) => {
   const [courses, setCourses] = useState<Course[]>([]);
-  const [allCourses, setAllCourses] = useState<Course[]>([]);
-
-  useEffect(() => {
-    const fetchData = () => COURSES;
-    setAllCourses(fetchData());
-  }, []);
 
   const filteredCourseOptions = allCourses.filter((c) => !courses.includes(c));
 
