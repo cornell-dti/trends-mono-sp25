@@ -13,6 +13,11 @@ type DropdownProps = {
 const getCourseCode = (course: Course) =>
   `${course.subject} ${course.catalogNbr}`;
 
+/**
+ * A dropdown menu.
+ * @param options The list of courses that can be selected.
+ * @param onChange A callback function to be called whenever a course is selected.
+ */
 const Dropdown = ({ options, onChange }: DropdownProps) => {
   const [query, setQuery] = useState("");
 

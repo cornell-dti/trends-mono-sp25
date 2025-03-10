@@ -6,6 +6,10 @@
   box-shadow: 0 0 10px 4px #efefef;
 }
 
+.courseCard:hover {
+  background-color: #d8d8d8;
+}
+
 .courseCode {
   color: rgb(133, 133, 133);
   font-size: 14px;
@@ -52,6 +56,11 @@
   text-align: left;
 }
 
+.semesterHeader {
+  display: flex;
+  justify-content: space-between;
+}
+
 .semesterContainer {
   display: flex;
   gap: 64px;
@@ -77,4 +86,44 @@
 
 .dropdownOption:hover {
   background-color: #d8d8d8;
+}
+
+.toggle-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle-switch {
+  width: 60px;
+  height: 30px;
+  background-color: #ccc;
+  border-radius: 30px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.toggle-switch.on {
+  background-color: #4d7d92;
+}
+
+.toggle-switch.off {
+  background-color: #ccc;
+}
+
+.toggle-circle {
+  width: 26px;
+  height: 26px;
+  background-color: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: left 0.3s ease;
+}
+
+.toggle-switch.on .toggle-circle {
+  left: 32px;
 }
