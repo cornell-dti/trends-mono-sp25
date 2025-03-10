@@ -1,14 +1,20 @@
+import { useEffect, useState } from "react";
 import Semester from "./Semester";
 import "./styles.css";
 import { COURSES } from "../constants/consts";
-import { useState } from "react";
 
 const CoursePlan = () => {
   const [semesterCount, setSemesterCount] = useState<number>(1);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
 
   const handleNewSemesterClick = () => {
     setSemesterCount(semesterCount + 1);
   };
+
+  useEffect(() => {
+    const fetchData = () => COURSES;
+    setAllCourses(fetchData());
+  }, []);
 
   return (
     <div>
@@ -16,7 +22,9 @@ const CoursePlan = () => {
         + New Semester
       </button>
       <div className="semesterContainer">
-        <Semester name={"Semester 1"} allCourses={COURSES} />
+        {Array.from({ length: semesterCount }).map((_, index) => (
+          <Semester name={`Semester ${index + 1}`} allCourses={allCourses} />
+        ))}
       </div>
     </div>
   );
