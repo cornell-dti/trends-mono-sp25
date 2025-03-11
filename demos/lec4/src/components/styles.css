@@ -72,6 +72,8 @@
   position: absolute;
   background-color: #efefef;
   width: 207px;
+  max-height: 350px;
+  overflow-y: auto;
 }
 
 .courseSearchBar {

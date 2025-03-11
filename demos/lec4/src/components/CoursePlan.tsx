@@ -1,14 +1,21 @@
 import Semester from "./Semester";
 import "./styles.css";
 import { COURSES } from "../constants/consts";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { makeArray } from "../util";
 
 const CoursePlan = () => {
   const [semesterCount, setSemesterCount] = useState<number>(1);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
 
   const handleNewSemesterClick = () => {
     setSemesterCount(semesterCount + 1);
   };
+
+  useEffect(() => {
+    const fetchCourses = () => COURSES;
+    setAllCourses(fetchCourses());
+  }, []);
 
   return (
     <div>
@@ -16,13 +23,9 @@ const CoursePlan = () => {
         + New Semester
       </button>
       <div className="semesterContainer">
-        {/* 
-          Activity 1: Add functionality to button to create new semester on click.
-          Each new semester should be named "Semester i", where i is the next integer.
-          The first semester should be "Semester 1".
-          You may want to leverage `makeArray` in util.ts.
-        */}
-        <Semester name={"Semester 1"} allCourses={COURSES} />
+        {makeArray(semesterCount).map((sem) => (
+          <Semester name={`Semester ${sem + 1}`} allCourses={allCourses} />
+        ))}
       </div>
     </div>
   );
