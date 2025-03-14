@@ -4,3 +4,23 @@
  */
 export const makeArray = (n: number) =>
   Array.from({ length: n }).map((_, index) => index);
+
+interface ApiCourseData {
+  description?: string;
+  catalogNbr: string | number;
+  catalogWhenOffered?: string;
+  enrollGroups: ApiEnrollGroup[];
+}
+
+interface ApiEnrollGroup {
+  unitsMinimum: number;
+  classSections: ApiClassSection[];
+}
+
+interface ApiClassSection {
+  meetings: ApiMeeting[];
+}
+
+interface ApiMeeting {
+  instructors: Instructor[];
+}
