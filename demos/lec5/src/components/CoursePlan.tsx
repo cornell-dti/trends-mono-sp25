@@ -23,8 +23,12 @@ const CoursePlan = () => {
         + New Semester
       </button>
       <div className="semesterContainer">
-        {makeArray(semesterCount).map((sem) => (
-          <Semester name={`Semester ${sem + 1}`} allCourses={allCourses} />
+        {makeArray(semesterCount).map(sem => (
+          <Semester
+            key={`Semester ${sem + 1}`}
+            name={`Semester ${sem + 1}`}
+            allCourses={allCourses}
+          />
         ))}
       </div>
     </div>

@@ -84,6 +84,7 @@
 .dropdownOption {
   margin: 0;
   padding: 0.5rem 0;
+  cursor: pointer;
 }
 
 .dropdownOption:hover {
@@ -128,4 +129,20 @@
 
 .toggle-switch.on .toggle-circle {
   left: 32px;
+}
+
+.loading-message {
+  font-style: italic;
+  color: #888;
+  text-align: center;
+  padding: 10px 0;
+}
+
+.no-data-message {
+  font-style: italic;
+  color: #888;
+  text-align: center;
+  padding: 10px 0;
+  border-top: 1px solid #eee;
+  margin-top: 10px;
 }
