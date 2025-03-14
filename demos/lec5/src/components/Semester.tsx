@@ -90,10 +90,7 @@ const Semester = ({ name, allCourses }: SemesterProps) => {
       </div>
       {!isMinimized && (
         <>
-          <Dropdown
-            options={allCourses}
-            onChange={handleAddCourse}
-          />
+          <Dropdown options={allCourses} onChange={handleAddCourse} />
           {courses.map((course, index) => {
             const courseKey = `${course.subject}-${course.catalogNbr}`;
             return (
