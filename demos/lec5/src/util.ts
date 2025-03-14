@@ -4,6 +4,26 @@
  */
 export const makeArray = (num: number) => Array.from(Array(num).keys());
 
+interface ApiCourseData {
+  description?: string;
+  catalogNbr: string | number;
+  catalogWhenOffered?: string;
+  enrollGroups: ApiEnrollGroup[];
+}
+
+interface ApiEnrollGroup {
+  unitsMinimum: number;
+  classSections: ApiClassSection[];
+}
+
+interface ApiClassSection {
+  meetings: ApiMeeting[];
+}
+
+interface ApiMeeting {
+  instructors: Instructor[];
+}
+
 /**
  * Fetches detailed course information from the Cornell API
  * @param subject The course subject code (e.g., "CS")
@@ -30,11 +50,15 @@ export const fetchCourseDetails = async (
       throw new Error(`API request failed with status ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as {
+      data: {
+        classes: ApiCourseData[];
+      };
+    };
 
     // Find the specific course in the API response by matching the catalogNbr
-    const courseData = data?.data?.classes?.find(
-      (course: Course) => Number(course.catalogNbr) === catalogNbr
+    const courseData = data.data.classes.find(
+      (course: ApiCourseData) => Number(course.catalogNbr) === catalogNbr
     );
 
     if (!courseData) {
@@ -62,21 +86,12 @@ export const fetchCourseDetails = async (
 
     // Get instructors from the first meeting of the first class section of the first enroll group
     if (
-      courseData.enrollGroups &&
       courseData.enrollGroups.length > 0 &&
-      courseData.enrollGroups[0].classSections &&
       courseData.enrollGroups[0].classSections.length > 0 &&
-      courseData.enrollGroups[0].classSections[0].meetings &&
-      courseData.enrollGroups[0].classSections[0].meetings.length > 0 &&
-      courseData.enrollGroups[0].classSections[0].meetings[0].instructors
+      courseData.enrollGroups[0].classSections[0].meetings.length > 0
     ) {
-      const instructorsData =
+      details.instructors =
         courseData.enrollGroups[0].classSections[0].meetings[0].instructors;
-      details.instructors = instructorsData.map((instructor: Instructor) => ({
-        firstName: instructor.firstName,
-        lastName: instructor.lastName,
-        netid: instructor.netid
-      }));
     }
 
     return details;
