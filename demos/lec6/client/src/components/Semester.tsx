@@ -30,7 +30,7 @@ const Semester = ({ name, allCourses }: SemesterProps) => {
     // Check if we already have details for this course
     if (!courseDetailsCache[courseKey]) {
       // Set loading state for this course
-      setLoading(prev => ({ ...prev, [courseKey]: true }));
+      setLoading((prev) => ({ ...prev, [courseKey]: true }));
 
       try {
         // Fetch detailed information from the API
@@ -42,12 +42,12 @@ const Semester = ({ name, allCourses }: SemesterProps) => {
         // Update the cache with the fetched details
         setCourseDetailsCache({
           ...courseDetailsCache,
-          [courseKey]: details
+          [courseKey]: details,
         });
 
         // Update the course in the courses array with the new details
-        setCourses(prev =>
-          prev.map(c =>
+        setCourses((prev) =>
+          prev.map((c) =>
             c.subject === course.subject && c.catalogNbr === course.catalogNbr
               ? { ...c, ...details }
               : c
@@ -57,12 +57,12 @@ const Semester = ({ name, allCourses }: SemesterProps) => {
         console.error("Error fetching course details:", error);
       } finally {
         // Clear loading state
-        setLoading(prev => ({ ...prev, [courseKey]: false }));
+        setLoading((prev) => ({ ...prev, [courseKey]: false }));
       }
     } else {
       // If we already have details, use them
-      setCourses(prev =>
-        prev.map(c =>
+      setCourses((prev) =>
+        prev.map((c) =>
           c.subject === course.subject && c.catalogNbr === course.catalogNbr
             ? { ...c, ...courseDetailsCache[courseKey] }
             : c
@@ -72,8 +72,8 @@ const Semester = ({ name, allCourses }: SemesterProps) => {
   };
 
   const handleToggleDetails = (updatedCourse: Course) => {
-    setCourses(prev =>
-      prev.map(c =>
+    setCourses((prev) =>
+      prev.map((c) =>
         c.subject === updatedCourse.subject &&
         c.catalogNbr === updatedCourse.catalogNbr
           ? { ...c, showDetails: updatedCourse.showDetails }
@@ -86,7 +86,7 @@ const Semester = ({ name, allCourses }: SemesterProps) => {
     <div className="semesterBox">
       <div className="semesterHeader">
         <h2 className="semesterTitle">{name}</h2>
-        <SlideToggle label="minimize" onChange={e => setIsMinimized(e)} />
+        <SlideToggle label="minimize" onChange={(e) => setIsMinimized(e)} />
       </div>
       {!isMinimized && (
         <>
