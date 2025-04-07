@@ -130,3 +130,66 @@
 .toggle-switch.on .toggle-circle {
   left: 32px;
 }
+
+.courseActions {
+  display: flex;
+  gap: 10px;
+}
+
+.deleteButton {
+  background-color: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.deleteButton:hover {
+  background-color: #ff0000;
+}
+
+.courseNotes {
+  margin-top: 15px;
+  border-top: 1px solid #eaeaea;
+  padding-top: 10px;
+}
+
+.editNotesContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editNotesContainer textarea {
+  min-height: 80px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.notesActions {
+  display: flex;
+  gap: 10px;
+}
+
+.viewNotesContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notesText {
+  white-space: pre-wrap;
+  padding: 8px;
+  background-color: #f9f9f9;
+  color: #222;
+  border-radius: 4px;
+  min-height: 40px;
+}
+
+/* Loading states */
+.loading-message {
+  font-style: italic;
+  color: #888;
+}

@@ -2,32 +2,58 @@ import Semester from "./Semester";
 import "./styles.css";
 import { COURSES } from "../constants/consts";
 import { useEffect, useState } from "react";
-import { makeArray } from "../util";
-import { API_KEY } from "../environment";
+import { fetchAllSemesters, addSemester } from "../firestoreUtils";
+
+interface SemesterData {
+  id: string;
+  name: string;
+}
 
 const CoursePlan = () => {
-  const [semesterCount, setSemesterCount] = useState<number>(1);
+  const [semesters, setSemesters] = useState<SemesterData[]>([]);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleNewSemesterClick = () => {
-    setSemesterCount(semesterCount + 1);
+  const handleNewSemesterClick = async () => {
+    const newSemName = `Semester ${semesters.length + 1}`;
+    const semesterId = await addSemester(newSemName);
+
+    if (semesterId) {
+      setSemesters([...semesters, { id: semesterId, name: newSemName }]);
+    }
   };
 
   useEffect(() => {
-    // BAD PRACTICE
-    const demo = fetch("http://localhost:8080/api/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`,
-      },
-      body: JSON.stringify({ key: "secret" }),
-    }).then((res) => res.json());
-    console.log(demo);
-    //-----------------------
-    const fetchCourses = () => COURSES;
-    setAllCourses(fetchCourses());
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Get all semesters from Firestore
+        const semestersData = await fetchAllSemesters();
+        setSemesters(semestersData);
+
+        // If no semesters exist, create the first one
+        if (semestersData.length === 0) {
+          const semesterId = await addSemester("Semester 1");
+          if (semesterId) {
+            setSemesters([{ id: semesterId, name: "Semester 1" }]);
+          }
+        }
+
+        // Set course data from constants
+        setAllCourses(COURSES);
+      } catch (error) {
+        console.error("Error loading data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
+
+  if (loading) {
+    return <div>Loading course plan...</div>;
+  }
 
   return (
     <div>
@@ -35,10 +61,11 @@ const CoursePlan = () => {
         + New Semester
       </button>
       <div className="semesterContainer">
-        {makeArray(semesterCount).map((sem) => (
+        {semesters.map(sem => (
           <Semester
-            key={`Semester ${sem + 1}`}
-            name={`Semester ${sem + 1}`}
+            key={sem.id}
+            semesterId={sem.id}
+            name={sem.name}
             allCourses={allCourses}
           />
         ))}

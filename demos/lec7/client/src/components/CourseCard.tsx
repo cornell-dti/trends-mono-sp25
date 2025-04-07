@@ -1,17 +1,25 @@
 import { useState } from "react";
+import { updateCourseNotes } from "../firestoreUtils";
 
 type CourseCardProps = {
   course: Course;
+  semesterId: string;
   onToggleDetails?: (course: Course) => void;
+  onDeleteCourse?: (courseId: string) => void;
   isLoading?: boolean;
 };
 
 const CourseCard = ({
   course,
+  semesterId,
   onToggleDetails,
+  onDeleteCourse,
   isLoading = false
 }: CourseCardProps) => {
-  const [showDetails, setShowDetails] = useState(false);
+  const [showDetails, setShowDetails] = useState(course.showDetails || false);
+  const [notes, setNotes] = useState(course.notes || "");
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   const handleDetailsClick = () => {
     const newShowDetails = !showDetails;
@@ -21,6 +29,36 @@ const CourseCard = ({
     }
   };
 
+  const handleDeleteClick = () => {
+    if (onDeleteCourse && course.id) {
+      onDeleteCourse(course.id);
+    }
+  };
+
+  const handleEditNotes = () => {
+    setIsEditingNotes(true);
+  };
+
+  const handleSaveNotes = async () => {
+    if (!course.id) return;
+
+    setIsSavingNotes(true);
+    try {
+      await updateCourseNotes(semesterId, course.id, notes);
+      // Update successful
+      setIsEditingNotes(false);
+    } catch (error) {
+      console.error("Error saving notes:", error);
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const handleCancelEditNotes = () => {
+    setNotes(course.notes || "");
+    setIsEditingNotes(false);
+  };
+
   return (
     <div className="courseCard">
       <div className="courseHeader">
@@ -28,9 +66,14 @@ const CourseCard = ({
           {course.subject} {course.catalogNbr}
         </p>
         <p className="courseTitle">{course.titleShort}</p>
-        <button className="detailsToggle" onClick={handleDetailsClick}>
-          {showDetails ? "Hide Details" : "Show Details"}
-        </button>
+        <div className="courseActions">
+          <button className="detailsToggle" onClick={handleDetailsClick}>
+            {showDetails ? "Hide Details" : "Show Details"}
+          </button>
+          <button className="deleteButton" onClick={handleDeleteClick}>
+            Delete
+          </button>
+        </div>
       </div>
 
       {showDetails && (
@@ -68,11 +111,49 @@ const CourseCard = ({
                   </ul>
                 </div>
               )}
+
+              <div className="courseNotes">
+                <h4>Notes:</h4>
+                {isEditingNotes ? (
+                  <div className="editNotesContainer">
+                    <textarea
+                      value={notes}
+                      onChange={e => setNotes(e.target.value)}
+                      disabled={isSavingNotes}
+                    />
+                    <div className="notesActions">
+                      <button
+                        onClick={handleSaveNotes}
+                        disabled={isSavingNotes}
+                      >
+                        {isSavingNotes ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        onClick={handleCancelEditNotes}
+                        disabled={isSavingNotes}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="viewNotesContainer">
+                    <p className="notesText">
+                      {notes || "No notes added yet."}
+                    </p>
+                    <button onClick={handleEditNotes}>
+                      {notes ? "Edit Notes" : "Add Notes"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {!isLoading &&
                 !course.description &&
                 !course.credits &&
                 !course.whenOffered &&
-                (!course.instructors || course.instructors.length === 0) && (
+                (!course.instructors || course.instructors.length === 0) &&
+                !notes && (
                   <p className="no-data-message">
                     No additional details available for this course.
                   </p>
