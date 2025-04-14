@@ -1,11 +1,13 @@
 import "./App.css";
 import CoursePlan from "./components/CoursePlan";
+import Header from "./components/Header";
 
 const App = () => {
   return (
     <div>
-      <h1>CoursePlan Clone</h1>
-      <CoursePlan />
+        <Header />
+        <h1>CoursePlan Clone</h1>
+        <CoursePlan />
     </div>
   );
 };
