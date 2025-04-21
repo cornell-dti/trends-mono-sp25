@@ -3,7 +3,7 @@ import cors from "cors";
 import { db } from "./firebase";
 
 const app: Express = express();
-const port = 8080;
+const port = process.env.PORT || 8080;
 
 app.use(cors());
 app.use(express.json());
@@ -15,7 +15,6 @@ app.get("/api/", (req, res) => {
 app.post("/api/", async (req, res) => {
   const key = req.body.key;
   console.log(key);
-  // Do something with the key
   res.json({ message: "Hello, world!" });
 });
 
