@@ -3,6 +3,7 @@ import CourseCard from "./CourseCard";
 import Dropdown from "./lib/Dropdown";
 import SlideToggle from "./lib/SlideToggle";
 import { fetchCourseDetails } from "../util";
+import { API_URL } from "../environment";
 
 type SemesterProps = {
   semesterId: string;
@@ -13,9 +14,7 @@ type SemesterProps = {
 const fetchCoursesForSemester = async (
   semesterId: string
 ): Promise<Course[]> => {
-  const res = await fetch(
-    `http://localhost:8080/api/semesters/${semesterId}/courses`
-  );
+  const res = await fetch(`${API_URL}/api/semesters/${semesterId}/courses`);
   if (!res.ok) throw new Error("Failed to fetch courses");
   return await res.json();
 };
@@ -24,14 +23,11 @@ const addCourseToSemester = async (
   semesterId: string,
   course: Course
 ): Promise<string | null> => {
-  const res = await fetch(
-    `http://localhost:8080/api/semesters/${semesterId}/courses`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(course),
-    }
-  );
+  const res = await fetch(`${API_URL}/api/semesters/${semesterId}/courses`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(course),
+  });
   if (!res.ok) return null;
   const data = await res.json();
   return data.id;
@@ -43,7 +39,7 @@ const updateCourseDetails = async (
   showDetails: boolean
 ): Promise<boolean> => {
   const res = await fetch(
-    `http://localhost:8080/api/semesters/${semesterId}/courses/${courseId}/details`,
+    `${API_URL}/api/semesters/${semesterId}/courses/${courseId}/details`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -58,7 +54,7 @@ const deleteCourseFromSemester = async (
   courseId: string
 ): Promise<boolean> => {
   const res = await fetch(
-    `http://localhost:8080/api/semesters/${semesterId}/courses/${courseId}`,
+    `${API_URL}/api/semesters/${semesterId}/courses/${courseId}`,
     {
       method: "DELETE",
     }

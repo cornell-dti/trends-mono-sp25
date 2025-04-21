@@ -2,6 +2,7 @@ import Semester from "./Semester";
 import "./styles.css";
 import { COURSES } from "../constants/consts";
 import { useEffect, useState } from "react";
+import { API_URL } from "../environment";
 
 interface SemesterData {
   id: string;
@@ -9,13 +10,13 @@ interface SemesterData {
 }
 
 const fetchAllSemesters = async (): Promise<SemesterData[]> => {
-  const res = await fetch("http://localhost:8080/api/semesters");
+  const res = await fetch(`${API_URL}/api/semesters`);
   if (!res.ok) throw new Error("Failed to fetch semesters");
   return await res.json();
 };
 
 const addSemester = async (name: string): Promise<string | null> => {
-  const res = await fetch("http://localhost:8080/api/semesters", {
+  const res = await fetch(`${API_URL}/api/semesters`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),

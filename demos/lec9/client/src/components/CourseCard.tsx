@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { API_URL } from "../environment";
 
 type CourseCardProps = {
   course: Course;
@@ -14,7 +15,7 @@ const updateCourseNotes = async (
   notes: string
 ): Promise<boolean> => {
   const res = await fetch(
-    `http://localhost:8080/api/semesters/${semesterId}/courses/${courseId}/notes`,
+    `${API_URL}/api/semesters/${semesterId}/courses/${courseId}/notes`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

@@ -1,8 +1,6 @@
 import express, { Express } from "express";
-import axios from "axios";
 import cors from "cors";
 import { db } from "./firebase";
-import { FieldValue } from "firebase-admin/firestore";
 
 const app: Express = express();
 const port = 8080;
