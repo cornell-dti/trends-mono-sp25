@@ -1,27 +1,32 @@
 # Deployment Guide
 
 ## Overview
+
 This project consists of a React client (Vite) and an Express/Firebase backend server that are deployed to EC2 using GitHub Actions.
 
+**Note**: We will want to use `npm` as opposed to `pnpm` to get CI to work.
+
 ## Architecture
-- **Client**: React app built with Vite, served via Nginx
-- **Server**: Express + Firebase Admin SDK, managed with PM2
-- **CI/CD**: GitHub Actions workflow triggered on push to `test-ci` branch
-- **Infrastructure**: AWS EC2 instance (Ubuntu)
+
+-   **Client**: React app built with Vite, served via Nginx
+-   **Server**: Express + Firebase Admin SDK, managed with PM2
+-   **CI/CD**: GitHub Actions workflow triggered on push to `test-ci` branch
+-   **Infrastructure**: AWS EC2 instance (Ubuntu)
 
 ## Required GitHub Secrets (EC2 Only)
 
 You only need to configure these EC2 connection secrets in your GitHub repository:
 
-- **`EC2_SSH_KEY`**: Private SSH key for EC2 instance access (entire .pem file content)
-- **`EC2_HOST`**: EC2 instance public IP or domain (e.g., `3.144.215.93` or use Elastic IP)
-- **`EC2_USER`**: `ubuntu` (for Ubuntu instances)
+-   **`EC2_SSH_KEY`**: Private SSH key for EC2 instance access (entire .pem file content)
+-   **`EC2_HOST`**: EC2 instance public IP or domain (e.g., `3.144.215.93` or use Elastic IP)
+-   **`EC2_USER`**: `ubuntu` (for Ubuntu instances)
 
 ## Local Files Required
 
 The workflow uses your local environment files directly. Make sure these exist before deploying:
 
 ### Client `.env` file (`demos/lec9/client/.env`)
+
 ```env
 VITE_API_URL=http://YOUR_EC2_IP:5000
 VITE_FIREBASE_API_KEY=your-api-key
@@ -33,13 +38,14 @@ VITE_FIREBASE_APP_ID=your-app-id
 ```
 
 ### Server Files (`demos/lec9/server/`)
-- **`.env`**: Server environment variables
-  ```env
-  PORT=5000
-  NODE_ENV=production
-  CLIENT_URL=http://YOUR_EC2_IP
-  ```
-- **`serviceAccount.json`**: Firebase Admin SDK credentials (download from Firebase Console)
+
+-   **`.env`**: Server environment variables
+    ```env
+    PORT=5000
+    NODE_ENV=production
+    CLIENT_URL=http://YOUR_EC2_IP
+    ```
+-   **`serviceAccount.json`**: Firebase Admin SDK credentials (download from Firebase Console)
 
 ## How It Works
 
@@ -53,6 +59,7 @@ VITE_FIREBASE_APP_ID=your-app-id
 ## EC2 Setup
 
 ### Prerequisites
+
 Run the setup script on your EC2 instance:
 
 ```bash
@@ -66,20 +73,25 @@ chmod +x ec2-setup.sh
 ```
 
 This installs:
-- Node.js 18+
-- PM2 (process manager)
-- Nginx (web server)
-- TypeScript
+
+-   Node.js 18+
+-   PM2 (process manager)
+-   Nginx (web server)
+-   TypeScript
 
 ### Security Group Configuration
+
 Ensure your EC2 security group has these inbound rules:
-- Port 22 (SSH)
-- Port 80 (HTTP)
-- Port 443 (HTTPS - if using SSL)
-- Port 5000 (Backend API)
+
+-   Port 22 (SSH)
+-   Port 80 (HTTP)
+-   Port 443 (HTTPS - if using SSL)
+-   Port 5000 (Backend API)
 
 ### Using Elastic IP (Recommended)
+
 To avoid IP changes when instance restarts:
+
 1. Go to EC2 → Elastic IPs
 2. Allocate new address
 3. Associate with your instance
@@ -88,6 +100,7 @@ To avoid IP changes when instance restarts:
 ## Deployment Process
 
 ### Automatic Deployment
+
 Push to the `test-ci` branch to trigger deployment:
 
 ```bash
@@ -100,18 +113,20 @@ git push origin test-ci
 ### What Happens During Deployment
 
 1. **Build Phase** (GitHub Actions):
-   - Uses your local `.env` files
-   - Builds React client
-   - Compiles TypeScript server
+
+    - Uses your local `.env` files
+    - Builds React client
+    - Compiles TypeScript server
 
 2. **Transfer Phase**:
-   - Client dist → `/var/www/lec9-client`
-   - Server (with .env and serviceAccount.json) → `/var/www/lec9-server`
+
+    - Client dist → `/var/www/lec9-client`
+    - Server (with .env and serviceAccount.json) → `/var/www/lec9-server`
 
 3. **Server Setup** (on EC2):
-   - Installs production dependencies
-   - PM2 manages the server
-   - Nginx serves the client
+    - Installs production dependencies
+    - PM2 manages the server
+    - Nginx serves the client
 
 ## PM2 Management
 
@@ -135,12 +150,14 @@ pm2 monit
 ## Nginx Configuration
 
 The workflow automatically configures Nginx to:
-- Serve React app from port 80
-- Proxy `/api/*` to backend on port 5000
+
+-   Serve React app from port 80
+-   Proxy `/api/*` to backend on port 5000
 
 ## Troubleshooting
 
 ### Server Not Starting
+
 ```bash
 pm2 logs lec9-server --lines 50
 ls -la /var/www/lec9-server/
@@ -148,6 +165,7 @@ cat /var/www/lec9-server/.env
 ```
 
 ### Client Not Loading
+
 ```bash
 sudo systemctl status nginx
 sudo tail -f /var/log/nginx/error.log
@@ -155,6 +173,7 @@ ls -la /var/www/lec9-client/
 ```
 
 ### Port Already in Use
+
 ```bash
 sudo lsof -i :5000
 pm2 stop all  # Stop all PM2 processes
@@ -187,6 +206,7 @@ pm2 stop all  # Stop all PM2 processes
 ## Rollback
 
 If deployment fails:
+
 ```bash
 # Quick restart
 ssh -i your-key.pem ubuntu@YOUR_EC2_IP
