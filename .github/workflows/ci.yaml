@@ -116,43 +116,51 @@ jobs:
             fi
 
             # Kill any hanging TypeScript processes from previous deployments
+            echo "Cleaning up any hanging processes..."
             pkill -f tsc || true
+            pkill -f npm || true
 
-            # Compile TypeScript with timeout (3 minutes)
-            echo "Compiling TypeScript..."
-            timeout 180s npx tsc
+            # Compile TypeScript
+            echo "Starting TypeScript compilation..."
+            npx tsc
             TSC_EXIT_CODE=$?
 
-            if [ $TSC_EXIT_CODE -eq 124 ]; then
-              echo "❌ TypeScript compilation timed out after 3 minutes"
-              echo "This usually indicates a memory issue. Consider adding swap space to your EC2 instance."
-              exit 1
-            elif [ $TSC_EXIT_CODE -ne 0 ]; then
+            if [ $TSC_EXIT_CODE -ne 0 ]; then
               echo "❌ TypeScript compilation failed with exit code $TSC_EXIT_CODE"
               exit 1
             fi
             echo "✅ TypeScript compilation successful"
 
+            # Verify server.js was created
+            if [ -f server.js ]; then
+              echo "✅ server.js file created successfully"
+            else
+              echo "❌ server.js file not found after compilation"
+              exit 1
+            fi
+
             # Clean up dev dependencies after compilation to save space
+            echo "Pruning dev dependencies..."
             npm prune --production
 
             # Install PM2 globally if not present
+            echo "Checking PM2 installation..."
             npm list -g pm2 || npm install -g pm2
 
             # Start or restart server with PM2
-            if pm2 list | grep -q "${{ env.PM2_APP_NAME }}"; then
-              pm2 restart ${{ env.PM2_APP_NAME }} --update-env
-            else
-              pm2 start server.js --name ${{ env.PM2_APP_NAME }} \
-                --max-memory-restart 500M \
-                --time \
-                --log-date-format "YYYY-MM-DD HH:mm:ss Z"
-            fi
+            echo "Starting/restarting server with PM2..."
+            pm2 delete ${{ env.PM2_APP_NAME }} 2>/dev/null || true
+            pm2 start server.js --name ${{ env.PM2_APP_NAME }} \
+              --max-memory-restart 500M \
+              --time \
+              --log-date-format "YYYY-MM-DD HH:mm:ss Z"
 
             # Save PM2 process list
+            echo "Saving PM2 process list..."
             pm2 save
 
             # Setup PM2 to start on boot (only needs to be done once)
+            echo "Setting up PM2 startup..."
             pm2 startup systemd -u ${{ secrets.EC2_USER }} --hp /home/${{ secrets.EC2_USER }} || true
 
             # Setup Nginx configuration for client (if nginx is installed)
