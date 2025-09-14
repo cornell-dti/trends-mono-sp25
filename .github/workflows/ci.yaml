@@ -182,7 +182,8 @@ jobs:
             }
             EOF
 
-              # Enable site if not already enabled
+              # Remove default site and enable our site
+              sudo rm -f /etc/nginx/sites-enabled/default
               sudo ln -sf /etc/nginx/sites-available/lec9-client /etc/nginx/sites-enabled/ || true
 
               # Test and reload nginx

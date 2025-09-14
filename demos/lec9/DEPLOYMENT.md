@@ -1,273 +1,245 @@
-# Deployment Guide
+# Deployment Guide for Lec9 Demo
 
-## Overview
-
-This project consists of a React client (Vite) and an Express/Firebase backend server that are deployed to EC2 using GitHub Actions.
-
-**Note**: We will want to use `npm` as opposed to `pnpm` to get CI to work.
-
-⚠️ **Important Changes**:
-- The CI workflow now uses `.env.example` files (not `.env` files) for builds
-- `serviceAccount.json` must be uploaded to a persistent location on EC2 before deployment
-- TypeScript compilation happens on EC2 (not in GitHub Actions) to avoid missing `serviceAccount.json` errors
-
-
-### ✅ Fix: Restrict permissions on your PEM
-
-Run this on your Mac:
-
-```bash
-chmod 600 ~/Desktop/mykey.pem
-```
-
-This makes the file **readable/writable only by you**.
-
----
-
-### 🔑 Then retry SSH
-
-```bash
-ssh -i ~/Desktop/mykey.pem ubuntu@3.144.215.93
-```
-
-And for `scp`:
-
-**Important**: Make sure your .pem file has the correct permissions (see step above):
-```bash
-chmod 600 ~/Desktop/mykey.pem
-```
-
-First, create the directory on the EC2 instance:
-```bash
-ssh -i ~/Desktop/mykey.pem ubuntu@3.144.215.93
-sudo mkdir -p /var/www/lec9-server
-sudo chown ubuntu:ubuntu /var/www/lec9-server
-exit
-```
-
-Create a persistent secrets directory and upload serviceAccount.json:
-```bash
-# Create secrets directory on EC2
-ssh -i ~/Desktop/mykey.pem ubuntu@3.144.215.93 "mkdir -p ~/secrets"
-
-# Upload serviceAccount.json to persistent location (won't be overwritten during deployment)
-scp -i ~/Desktop/mykey.pem ~/Desktop/trends-mono-sp25/demos/lec9/server/serviceAccount.json ubuntu@3.144.215.93:~/secrets/
-```
-
-**Note**: The CI workflow will automatically copy `serviceAccount.json` from `~/secrets/` to the deployment directory.
-
-## Architecture
-
--   **Client**: React app built with Vite, served via Nginx
--   **Server**: Express + Firebase Admin SDK, managed with PM2
--   **CI/CD**: GitHub Actions workflow triggered on push to `test-ci` branch
--   **Infrastructure**: AWS EC2 instance (Ubuntu)
-
-## Required GitHub Secrets (EC2 Only)
-
-You only need to configure these EC2 connection secrets in your GitHub repository:
-
--   **`EC2_SSH_KEY`**: Private SSH key for EC2 instance access (entire .pem file content)
--   **`EC2_HOST`**: EC2 instance public IP or domain (e.g., `3.144.215.93` or use Elastic IP)
--   **`EC2_USER`**: `ubuntu` (for Ubuntu instances)
-
-## Local Files Required
-
-The workflow uses your local environment files directly. Make sure these exist before deploying:
-
-### Client `.env.example` file (`demos/lec9/client/.env.example`)
-
-**Note**: The CI uses `.env.example` for builds. You can manually create a `.env` file locally for development.
-
-```env
-VITE_API_URL=http://YOUR_EC2_IP:5000
-VITE_FIREBASE_API_KEY=your-api-key
-VITE_FIREBASE_AUTH_DOMAIN=your-auth-domain
-VITE_FIREBASE_PROJECT_ID=your-project-id
-VITE_FIREBASE_STORAGE_BUCKET=your-storage-bucket
-VITE_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
-VITE_FIREBASE_APP_ID=your-app-id
-```
-
-### Server Files (`demos/lec9/server/`)
-
--   **`.env.example`**: Server environment variables template
-    ```env
-    PORT=8080
-    ```
--   **`serviceAccount.json`**: Firebase Admin SDK credentials (download from Firebase Console)
-    - **Important**: Don't commit this file to git!
-    - Upload it to EC2 manually using the commands above
-
-## How It Works
-
-1. **Environment Files**: The workflow uses `.env.example` files for builds
-2. **Client Build**: Builds React client locally using `.env.example` → `.env.production`
-3. **Server Deploy**: Transfers TypeScript source to EC2 (compilation happens on EC2)
-4. **Secret Management**: `serviceAccount.json` is stored in `~/secrets/` on EC2 and copied during deployment
-5. **TypeScript Compilation**: Happens on EC2 after deployment (where `serviceAccount.json` exists)
-
-**Note**: This project is in a monorepo at `demos/lec9/` - the workflow handles this path structure automatically.
-
-## EC2 Setup
+## 🚀 Quick Start
 
 ### Prerequisites
+1. **EC2 Instance** (Ubuntu 22.04 or later)
+2. **GitHub Repository** with secrets configured
+3. **Firebase Project** with serviceAccount.json
 
-Run the setup script on your EC2 instance:
+### Step 1: Configure AWS Security Group
+Add these inbound rules to your EC2 security group:
+- **SSH (22)**: Your IP
+- **HTTP (80)**: 0.0.0.0/0
+- **Custom TCP (5000)**: 0.0.0.0/0
+- **HTTPS (443)**: 0.0.0.0/0 (optional)
 
+### Step 2: Initial EC2 Setup
 ```bash
-# SSH into your EC2 instance
-ssh -i your-key.pem ubuntu@YOUR_EC2_IP
+# SSH into your EC2
+ssh -i ~/Desktop/mykey.pem ubuntu@YOUR_EC2_IP
 
-# Download and run setup script
-wget https://raw.githubusercontent.com/yourusername/yourrepo/test-ci/demos/lec9/scripts/ec2-setup.sh
-chmod +x ec2-setup.sh
-./ec2-setup.sh
+# Run setup script (installs Node.js, PM2, Nginx, TypeScript)
+curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs nginx
+sudo npm install -g pm2 typescript
+
+# Create directories
+sudo mkdir -p /var/www/lec9-client /var/www/lec9-server
+sudo chown -R ubuntu:ubuntu /var/www/
 ```
 
-This installs:
-
--   Node.js 18+
--   PM2 (process manager)
--   Nginx (web server)
--   TypeScript
-
-### Security Group Configuration
-
-Ensure your EC2 security group has these inbound rules:
-
--   Port 22 (SSH)
--   Port 80 (HTTP)
--   Port 443 (HTTPS - if using SSL)
--   Port 5000 (Backend API)
-
-### Using Elastic IP (Recommended)
-
-To avoid IP changes when instance restarts:
-
-1. Go to EC2 → Elastic IPs
-2. Allocate new address
-3. Associate with your instance
-4. Use this IP for `EC2_HOST`
-
-## Deployment Process
-
-### Automatic Deployment
-
-Push to the `test-ci` branch to trigger deployment:
-
+### Step 3: Upload Service Account (One-time setup)
 ```bash
-git checkout -b test-ci
+# From your local machine:
+ssh ubuntu@YOUR_EC2_IP "mkdir -p ~/secrets"
+scp -i ~/Desktop/mykey.pem ~/Desktop/trends-mono-sp25/demos/lec9/server/serviceAccount.json ubuntu@YOUR_EC2_IP:~/secrets/
+```
+
+### Step 4: Configure GitHub Secrets
+In your GitHub repository settings, add:
+- `EC2_SSH_KEY`: Contents of your .pem file
+- `EC2_HOST`: Your EC2 IP (e.g., 3.144.215.93)
+- `EC2_USER`: ubuntu
+
+### Step 5: Create Environment Files
+**Client** (`demos/lec9/client/.env.example`):
+```env
+VITE_SUPER_SECRET_KEY="your_secret_key_here"
+```
+
+**Server** (`demos/lec9/server/.env.example`):
+```env
+PORT=8080
+```
+
+### Step 6: Deploy
+```bash
 git add .
-git commit -m "Deploy to EC2"
+git commit -m "Deploy"
 git push origin test-ci
 ```
 
-### What Happens During Deployment
+## 📋 Architecture Overview
 
-1. **Build Phase** (GitHub Actions):
-
-    - Uses `.env.example` files
-    - Builds React client
-    - Verifies server dependencies (no TypeScript compilation)
-
-2. **Transfer Phase**:
-
-    - Client dist → `/var/www/lec9-client`
-    - Server source code → `/var/www/lec9-server`
-
-3. **Server Setup** (on EC2):
-    - Installs production dependencies
-    - Copies `serviceAccount.json` from `~/secrets/`
-    - Compiles TypeScript to JavaScript
-    - PM2 manages the server
-    - Nginx serves the client
-
-## PM2 Management
-
-```bash
-# SSH into EC2
-ssh -i your-key.pem ubuntu@YOUR_EC2_IP
-
-# View server status
-pm2 list
-
-# View logs
-pm2 logs lec9-server
-
-# Restart server
-pm2 restart lec9-server
-
-# Monitor
-pm2 monit
+```
+┌─────────────┐     ┌──────────────┐     ┌──────────────┐
+│   Browser   │────▶│  Nginx (:80) │────▶│ React Client │
+└─────────────┘     └──────────────┘     └──────────────┘
+                            │
+                            │ /api/*
+                            ▼
+                    ┌──────────────┐     ┌──────────────┐
+                    │ PM2 Manager  │────▶│Express(:5000)│
+                    └──────────────┘     └──────────────┘
 ```
 
-## Nginx Configuration
+## 🔧 How the CI/CD Works
 
-The workflow automatically configures Nginx to:
+1. **GitHub Actions** triggers on push to `test-ci`
+2. **Build Phase**:
+   - Client: Uses `.env.example` → builds React app
+   - Server: Verifies dependencies only (no build)
+3. **Deploy Phase**:
+   - Creates directories on EC2
+   - Transfers client dist → `/var/www/lec9-client`
+   - Transfers server source → `/var/www/lec9-server`
+4. **EC2 Setup Phase**:
+   - Installs all dependencies (including dev)
+   - Copies `serviceAccount.json` from `~/secrets/`
+   - Compiles TypeScript on EC2
+   - Removes dev dependencies
+   - Starts/restarts PM2 process
+   - Configures Nginx
 
--   Serve React app from port 80
--   Proxy `/api/*` to backend on port 5000
+## 🐛 Troubleshooting
 
-## Troubleshooting
-
-### Server Not Starting
-
+### Site shows "Welcome to nginx"
 ```bash
-pm2 logs lec9-server --lines 50
-ls -la /var/www/lec9-server/
-cat /var/www/lec9-server/.env
+# Remove default site and reload
+sudo rm /etc/nginx/sites-enabled/default
+sudo systemctl reload nginx
 ```
 
-### Client Not Loading
-
+### Connection Refused / Site Can't Be Reached
+1. Check AWS Security Group rules (ports 80, 5000)
+2. Check services:
 ```bash
 sudo systemctl status nginx
-sudo tail -f /var/log/nginx/error.log
-ls -la /var/www/lec9-client/
+pm2 list
+sudo netstat -tlnp | grep -E ':80|:5000'
 ```
 
-### Port Already in Use
-
+### Server Not Running
 ```bash
-sudo lsof -i :5000
-pm2 stop all  # Stop all PM2 processes
+pm2 logs lec9-server --lines 50
+cd /var/www/lec9-server
+ls -la  # Check if serviceAccount.json exists
 ```
 
-## Directory Structure on EC2
+### API Returns 404
+```bash
+# Check PM2 status
+pm2 list
+pm2 logs lec9-server
 
+# Test API directly
+curl http://localhost:5000/health
+```
+
+### TypeScript Compilation Fails
+```bash
+cd /var/www/lec9-server
+npm ci  # Install all dependencies
+npx tsc  # Try compiling manually
+```
+
+## 📁 Directory Structure
+
+**EC2 Server:**
 ```
 /var/www/
-├── lec9-client/        # React app
+├── lec9-client/          # React build output
 │   ├── index.html
 │   └── assets/
-└── lec9-server/        # Node.js server
-    ├── server.js
-    ├── .env           # Copied from your local
-    ├── serviceAccount.json  # Copied from your local
+└── lec9-server/          # Node.js server
+    ├── server.ts         # Source
+    ├── server.js         # Compiled
+    ├── serviceAccount.json
     └── node_modules/
+
+~/secrets/
+└── serviceAccount.json   # Persistent location
 ```
 
-## Quick Setup Checklist
+**Local Project:**
+```
+demos/lec9/
+├── client/
+│   ├── src/
+│   ├── package.json
+│   ├── package-lock.json
+│   └── .env.example
+└── server/
+    ├── server.ts
+    ├── package.json
+    ├── package-lock.json
+    └── .env.example
+```
 
-1. ✅ Create EC2 instance (Ubuntu)
-2. ✅ Configure security group (ports 22, 80, 443, 5000)
-3. ✅ Run setup script on EC2
-4. ✅ Create `.env.example` files in both client and server
-5. ✅ Upload `serviceAccount.json` to EC2's `~/secrets/` directory (see commands above)
-6. ✅ Configure GitHub Secrets (EC2_SSH_KEY, EC2_HOST, EC2_USER)
-7. ✅ Push to `test-ci` branch
+## 🔄 Common Commands
 
-## Rollback
-
-If deployment fails:
-
+### PM2 Management
 ```bash
-# Quick restart
-ssh -i your-key.pem ubuntu@YOUR_EC2_IP
-pm2 restart lec9-server
-
-# Or revert and redeploy
-git revert HEAD
-git push origin test-ci
+pm2 list                    # View all processes
+pm2 logs lec9-server        # View logs
+pm2 restart lec9-server     # Restart server
+pm2 stop lec9-server        # Stop server
+pm2 monit                   # Monitor resources
 ```
+
+### Nginx Management
+```bash
+sudo systemctl status nginx
+sudo systemctl restart nginx
+sudo nginx -t               # Test configuration
+sudo tail -f /var/log/nginx/error.log
+sudo tail -f /var/log/nginx/access.log
+```
+
+### Manual Deployment Fix
+```bash
+# If automatic deployment fails
+ssh ubuntu@YOUR_EC2_IP
+cd /var/www/lec9-server
+npm ci
+cp ~/secrets/serviceAccount.json .
+npx tsc
+pm2 restart lec9-server
+```
+
+## ⚠️ Important Notes
+
+1. **serviceAccount.json** is stored in `~/secrets/` to persist across deployments
+2. **TypeScript compilation** happens on EC2 (not in GitHub Actions)
+3. **.env.example** files are used for builds (not .env)
+4. **Default Nginx site** is automatically removed during deployment
+5. **Node.js version**: Requires v18+ (some Firebase packages need v20+)
+
+## 🆘 Quick Fixes
+
+### Reset Everything
+```bash
+# On EC2
+pm2 delete all
+sudo rm -rf /var/www/lec9-*
+sudo rm /etc/nginx/sites-enabled/lec9-client
+sudo systemctl restart nginx
+
+# Then redeploy from GitHub
+```
+
+### Check Everything is Running
+```bash
+curl http://localhost:80          # Should show React app
+curl http://localhost:5000/health # Should show API response
+pm2 list                          # Should show lec9-server online
+sudo systemctl status nginx        # Should be active
+```
+
+## 📝 Checklist for New Deployment
+
+- [ ] EC2 instance created
+- [ ] Security group configured (ports 22, 80, 5000)
+- [ ] serviceAccount.json uploaded to `~/secrets/`
+- [ ] GitHub secrets configured (EC2_SSH_KEY, EC2_HOST, EC2_USER)
+- [ ] .env.example files created
+- [ ] package-lock.json files exist (not pnpm-lock.yaml)
+- [ ] Push to `test-ci` branch
+
+## 🔗 Resources
+
+- [PM2 Documentation](https://pm2.keymetrics.io/)
+- [Nginx Documentation](https://nginx.org/en/docs/)
+- [GitHub Actions](https://docs.github.com/en/actions)
+- [AWS EC2 Security Groups](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html)
