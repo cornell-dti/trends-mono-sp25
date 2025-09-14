@@ -53,6 +53,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 2m
           script: |
             sudo mkdir -p ${{ env.DEPLOY_PATH_CLIENT }}
             sudo mkdir -p ${{ env.DEPLOY_PATH_SERVER }}
@@ -87,6 +88,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 10m
           script: |
             # Ensure directories exist
             mkdir -p ${{ env.DEPLOY_PATH_CLIENT }}
@@ -218,6 +220,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 2m
           script: |
             # Wait for server to be ready
             sleep 5
