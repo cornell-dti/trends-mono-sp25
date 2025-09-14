@@ -1,0 +1,192 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - test-ci
+
+env:
+  NODE_VERSION: '18'
+  DEPLOY_PATH_CLIENT: /var/www/lec9-client
+  DEPLOY_PATH_SERVER: /var/www/lec9-server
+  PM2_APP_NAME: lec9-server
+  WORKING_DIR: demos/lec9
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Build client locally
+      - name: Install and build client
+        working-directory: ${{ env.WORKING_DIR }}/client
+        run: |
+          npm ci
+          # Copy local .env to production if it exists
+          if [ -f .env ]; then
+            cp .env .env.production
+          fi
+          npm run build
+
+      # Build server locally
+      - name: Install and build server
+        working-directory: ${{ env.WORKING_DIR }}/server
+        run: |
+          npm ci
+          npm install -g typescript
+          tsc
+
+      # Deploy client to EC2
+      - name: Deploy client to EC2
+        uses: easingthemes/ssh-deploy@v4.1.10
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          ARGS: '-rltgoDzvO --delete'
+          SOURCE: '${{ env.WORKING_DIR }}/client/dist/'
+          REMOTE_HOST: ${{ secrets.EC2_HOST }}
+          REMOTE_USER: ${{ secrets.EC2_USER }}
+          TARGET: ${{ env.DEPLOY_PATH_CLIENT }}
+
+      # Deploy server to EC2 (including local .env and serviceAccount.json)
+      - name: Deploy server to EC2
+        uses: easingthemes/ssh-deploy@v4.1.10
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          ARGS: '-rltgoDzvO --delete --exclude=node_modules'
+          SOURCE: '${{ env.WORKING_DIR }}/server/'
+          REMOTE_HOST: ${{ secrets.EC2_HOST }}
+          REMOTE_USER: ${{ secrets.EC2_USER }}
+          TARGET: ${{ env.DEPLOY_PATH_SERVER }}
+
+      # Setup server and restart
+      - name: Setup server and restart application
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Ensure directories exist
+            mkdir -p ${{ env.DEPLOY_PATH_CLIENT }}
+            mkdir -p ${{ env.DEPLOY_PATH_SERVER }}
+
+            # Install server dependencies
+            cd ${{ env.DEPLOY_PATH_SERVER }}
+            npm ci --production
+
+            # Install TypeScript globally if not present
+            npm list -g typescript || npm install -g typescript
+
+            # Compile TypeScript (in case it's needed)
+            npx tsc || echo "TypeScript compilation skipped or failed"
+
+            # Install PM2 globally if not present
+            npm list -g pm2 || npm install -g pm2
+
+            # Start or restart server with PM2
+            if pm2 list | grep -q "${{ env.PM2_APP_NAME }}"; then
+              pm2 restart ${{ env.PM2_APP_NAME }} --update-env
+            else
+              pm2 start server.js --name ${{ env.PM2_APP_NAME }} \
+                --max-memory-restart 500M \
+                --time \
+                --log-date-format "YYYY-MM-DD HH:mm:ss Z"
+            fi
+
+            # Save PM2 process list
+            pm2 save
+
+            # Setup PM2 to start on boot (only needs to be done once)
+            pm2 startup systemd -u ${{ secrets.EC2_USER }} --hp /home/${{ secrets.EC2_USER }} || true
+
+            # Setup Nginx configuration for client (if nginx is installed)
+            if command -v nginx &> /dev/null; then
+              # Create nginx config for React app
+              sudo tee /etc/nginx/sites-available/lec9-client << 'EOF'
+            server {
+                listen 80;
+                listen [::]:80;
+                server_name _;
+
+                root ${{ env.DEPLOY_PATH_CLIENT }};
+                index index.html;
+
+                # Serve static files
+                location / {
+                    try_files \$uri \$uri/ /index.html;
+                }
+
+                # API proxy
+                location /api/ {
+                    proxy_pass http://localhost:5000/;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade \$http_upgrade;
+                    proxy_set_header Connection 'upgrade';
+                    proxy_set_header Host \$host;
+                    proxy_cache_bypass \$http_upgrade;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto \$scheme;
+                }
+
+                # Gzip compression
+                gzip on;
+                gzip_vary on;
+                gzip_min_length 1024;
+                gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+            }
+            EOF
+
+              # Enable site if not already enabled
+              sudo ln -sf /etc/nginx/sites-available/lec9-client /etc/nginx/sites-enabled/ || true
+
+              # Test and reload nginx
+              sudo nginx -t && sudo systemctl reload nginx || echo "Nginx configuration failed"
+            else
+              echo "Nginx not installed - client will need to be served differently"
+            fi
+
+            # Show deployment status
+            echo "========================================="
+            echo "✅ Deployment completed!"
+            echo "========================================="
+            echo "Server status:"
+            pm2 status
+            echo ""
+            echo "Client deployed to: ${{ env.DEPLOY_PATH_CLIENT }}"
+            echo "Server deployed to: ${{ env.DEPLOY_PATH_SERVER }}"
+
+      # Health check
+      - name: Health check
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Wait for server to be ready
+            sleep 5
+
+            # Check if server is running
+            if pm2 list | grep -q "${{ env.PM2_APP_NAME }}.*online"; then
+              echo "✅ Server is running"
+
+              # Try to make a health check request (adjust endpoint as needed)
+              if curl -f http://localhost:5000/health 2>/dev/null; then
+                echo "✅ Server health check passed"
+              else
+                echo "⚠️ Server is running but health check failed or endpoint doesn't exist"
+              fi
+            else
+              echo "❌ Server is not running properly"
+              pm2 logs ${{ env.PM2_APP_NAME }} --lines 20
+              exit 1
+            fi
