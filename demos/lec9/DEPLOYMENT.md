@@ -6,6 +6,11 @@ This project consists of a React client (Vite) and an Express/Firebase backend s
 
 **Note**: We will want to use `npm` as opposed to `pnpm` to get CI to work.
 
+⚠️ **Important Changes**:
+- The CI workflow now uses `.env.example` files (not `.env` files) for builds
+- `serviceAccount.json` must be uploaded to a persistent location on EC2 before deployment
+- TypeScript compilation happens on EC2 (not in GitHub Actions) to avoid missing `serviceAccount.json` errors
+
 
 ### ✅ Fix: Restrict permissions on your PEM
 
@@ -40,10 +45,16 @@ sudo chown ubuntu:ubuntu /var/www/lec9-server
 exit
 ```
 
-Then transfer the serviceAccount.json file (use full local path):
+Create a persistent secrets directory and upload serviceAccount.json:
 ```bash
-scp -i ~/Desktop/mykey.pem ~/Desktop/trends-mono-sp25/demos/lec9/server/serviceAccount.json ubuntu@3.144.215.93:/var/www/lec9-server/
+# Create secrets directory on EC2
+ssh -i ~/Desktop/mykey.pem ubuntu@3.144.215.93 "mkdir -p ~/secrets"
+
+# Upload serviceAccount.json to persistent location (won't be overwritten during deployment)
+scp -i ~/Desktop/mykey.pem ~/Desktop/trends-mono-sp25/demos/lec9/server/serviceAccount.json ubuntu@3.144.215.93:~/secrets/
 ```
+
+**Note**: The CI workflow will automatically copy `serviceAccount.json` from `~/secrets/` to the deployment directory.
 
 ## Architecture
 
@@ -64,7 +75,9 @@ You only need to configure these EC2 connection secrets in your GitHub repositor
 
 The workflow uses your local environment files directly. Make sure these exist before deploying:
 
-### Client `.env` file (`demos/lec9/client/.env`)
+### Client `.env.example` file (`demos/lec9/client/.env.example`)
+
+**Note**: The CI uses `.env.example` for builds. You can manually create a `.env` file locally for development.
 
 ```env
 VITE_API_URL=http://YOUR_EC2_IP:5000
@@ -78,20 +91,21 @@ VITE_FIREBASE_APP_ID=your-app-id
 
 ### Server Files (`demos/lec9/server/`)
 
--   **`.env`**: Server environment variables
+-   **`.env.example`**: Server environment variables template
     ```env
-    PORT=5000
-    NODE_ENV=production
-    CLIENT_URL=http://YOUR_EC2_IP
+    PORT=8080
     ```
 -   **`serviceAccount.json`**: Firebase Admin SDK credentials (download from Firebase Console)
+    - **Important**: Don't commit this file to git!
+    - Upload it to EC2 manually using the commands above
 
 ## How It Works
 
-1. **Local Files**: The workflow copies your local `.env` and `serviceAccount.json` files
-2. **Build**: Builds both client and server locally
-3. **Deploy**: Transfers everything to EC2 (including environment files)
-4. **No Secrets Management**: No need to manage Firebase secrets in GitHub - just use your local files
+1. **Environment Files**: The workflow uses `.env.example` files for builds
+2. **Client Build**: Builds React client locally using `.env.example` → `.env.production`
+3. **Server Deploy**: Transfers TypeScript source to EC2 (compilation happens on EC2)
+4. **Secret Management**: `serviceAccount.json` is stored in `~/secrets/` on EC2 and copied during deployment
+5. **TypeScript Compilation**: Happens on EC2 after deployment (where `serviceAccount.json` exists)
 
 **Note**: This project is in a monorepo at `demos/lec9/` - the workflow handles this path structure automatically.
 
@@ -153,17 +167,19 @@ git push origin test-ci
 
 1. **Build Phase** (GitHub Actions):
 
-    - Uses your local `.env` files
+    - Uses `.env.example` files
     - Builds React client
-    - Compiles TypeScript server
+    - Verifies server dependencies (no TypeScript compilation)
 
 2. **Transfer Phase**:
 
     - Client dist → `/var/www/lec9-client`
-    - Server (with .env and serviceAccount.json) → `/var/www/lec9-server`
+    - Server source code → `/var/www/lec9-server`
 
 3. **Server Setup** (on EC2):
     - Installs production dependencies
+    - Copies `serviceAccount.json` from `~/secrets/`
+    - Compiles TypeScript to JavaScript
     - PM2 manages the server
     - Nginx serves the client
 
@@ -237,8 +253,8 @@ pm2 stop all  # Stop all PM2 processes
 1. ✅ Create EC2 instance (Ubuntu)
 2. ✅ Configure security group (ports 22, 80, 443, 5000)
 3. ✅ Run setup script on EC2
-4. ✅ Create local `.env` files
-5. ✅ Add `serviceAccount.json` to server folder
+4. ✅ Create `.env.example` files in both client and server
+5. ✅ Upload `serviceAccount.json` to EC2's `~/secrets/` directory (see commands above)
 6. ✅ Configure GitHub Secrets (EC2_SSH_KEY, EC2_HOST, EC2_USER)
 7. ✅ Push to `test-ci` branch
 
