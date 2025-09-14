@@ -1,8 +1,9 @@
 // Dynamic API URL selection based on environment
 export const API_URL =
-  import.meta.env.MODE === "development"
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.MODE === "development"
     ? "http://localhost:8080"
-    : "https://your-production-url.com";
+    : window.location.origin);
 
 export const API_KEY = import.meta.env.VITE_SUPER_SECRET_KEY;
 

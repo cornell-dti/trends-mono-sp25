@@ -1,8 +1,22 @@
 name: Deploy to EC2
 
-# IMPORTANT: Before first deployment, manually upload serviceAccount.json to EC2:
-# ssh ec2-user@<EC2_HOST> "mkdir -p ~/secrets"
-# scp demos/lec9/server/serviceAccount.json ec2-user@<EC2_HOST>:~/secrets/
+# IMPORTANT: Setup before first deployment:
+#
+# 1. Configure GitHub Secrets (Settings > Secrets > Actions):
+#    Required:
+#    - EC2_SSH_KEY: Your EC2 private key (.pem file contents)
+#    - EC2_HOST: Your EC2 IP address (e.g., 3.144.215.93)
+#    - EC2_USER: ubuntu
+#    - VITE_SUPER_SECRET_KEY: Your client secret key
+#
+#    Optional:
+#    - VITE_API_URL: API URL (defaults to window.location.origin)
+#    - SERVER_PORT: Server port (defaults to 8080) (make sure to update Security Group if you change this)
+#    - NODE_ENV: Node environment (defaults to production)
+#
+# 2. Upload serviceAccount.json to EC2 (one-time setup):
+#    ssh ubuntu@<EC2_HOST> "mkdir -p ~/secrets"
+#    scp demos/lec9/server/serviceAccount.json ubuntu@<EC2_HOST>:~/secrets/
 
 on:
   push:
@@ -34,10 +48,11 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}/client
         run: |
           npm ci
-          # Copy .env.example to .env.production for build
-          if [ -f .env.example ]; then
-            cp .env.example .env.production
-          fi
+          # Create .env.production from GitHub secrets
+          cat > .env.production << EOF
+          VITE_SUPER_SECRET_KEY=${{ secrets.VITE_SUPER_SECRET_KEY }}
+          VITE_API_URL=${{ secrets.VITE_API_URL }}
+          EOF
           npm run build
 
       # Install server dependencies locally (just to verify package.json)
@@ -128,10 +143,14 @@ jobs:
             # Install PM2 globally if not present
             npm list -g pm2 || npm install -g pm2
 
-            # Start or restart server with PM2
+            # Start or restart server with PM2 and environment variables from GitHub Secrets
             if pm2 list | grep -q "${{ env.PM2_APP_NAME }}"; then
+              PORT=${{ secrets.SERVER_PORT || '8080' }} \
+              NODE_ENV=${{ secrets.NODE_ENV || 'production' }} \
               pm2 restart ${{ env.PM2_APP_NAME }} --update-env
             else
+              PORT=${{ secrets.SERVER_PORT || '8080' }} \
+              NODE_ENV=${{ secrets.NODE_ENV || 'production' }} \
               pm2 start server.js --name ${{ env.PM2_APP_NAME }} \
                 --max-memory-restart 500M \
                 --time \
@@ -147,13 +166,13 @@ jobs:
             # Setup Nginx configuration for client (if nginx is installed)
             if command -v nginx &> /dev/null; then
               # Create nginx config for React app
-              sudo tee /etc/nginx/sites-available/lec9-client << 'EOF'
+              sudo tee /etc/nginx/sites-available/lec9-client << EOF
             server {
                 listen 80;
                 listen [::]:80;
                 server_name _;
 
-                root ${{ env.DEPLOY_PATH_CLIENT }};
+                root /var/www/lec9-client;
                 index index.html;
 
                 # Serve static files
