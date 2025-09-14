@@ -113,9 +113,12 @@ jobs:
               exit 1
             fi
 
-            # Compile TypeScript (required for server to run)
+            # Kill any hanging TypeScript processes from previous deployments
+            pkill -f tsc || true
+
+            # Compile TypeScript with memory limit and timeout (3 minutes)
             echo "Compiling TypeScript..."
-            npx tsc
+            timeout 180s npx tsc --maxNodeModuleJsDepth 1
             if [ $? -ne 0 ]; then
               echo "❌ TypeScript compilation failed"
               exit 1

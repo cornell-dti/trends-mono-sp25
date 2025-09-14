@@ -134,6 +134,48 @@ npm ci  # Install all dependencies
 npx tsc  # Try compiling manually
 ```
 
+### Deployment Hangs / SSH Connection Refused
+**This is a common issue on t2.micro instances with limited RAM (1GB)**
+
+**Symptoms:**
+- GitHub Action stuck on "Compiling TypeScript..." for > 3 minutes
+- Can't SSH into server (connection refused/timeout)
+- Previous deployments worked but suddenly stopped
+
+**Cause:** Memory exhaustion from TypeScript compilation or zombie npm/node processes
+
+**Quick Fix - Reboot EC2:**
+```bash
+# From AWS Console:
+# EC2 → Instances → Select your instance → Instance State → Reboot
+
+# Or using AWS CLI:
+aws ec2 reboot-instances --instance-ids YOUR_INSTANCE_ID
+```
+
+**Prevention:**
+```bash
+# Add swap space to prevent memory issues (run once on EC2)
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# Check swap is active
+free -h
+```
+
+**Clean up before deployment:**
+```bash
+# SSH into EC2 and clean up
+pkill -f npm
+pkill -f node
+pkill -f tsc
+pm2 kill
+rm -rf /var/www/lec9-server/node_modules
+```
+
 ## 📁 Directory Structure
 
 **EC2 Server:**
