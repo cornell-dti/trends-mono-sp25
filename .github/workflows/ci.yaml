@@ -1,5 +1,8 @@
 name: Deploy to EC2
 
+# IMPORTANT: Before first deployment, manually upload serviceAccount.json to EC2:
+# scp demos/lec9/server/serviceAccount.json ec2-user@<EC2_HOST>:/var/www/lec9-server/
+
 on:
   push:
     branches:
@@ -36,13 +39,11 @@ jobs:
           fi
           npm run build
 
-      # Build server locally
-      - name: Install and build server
+      # Install server dependencies locally (just to verify package.json)
+      - name: Install server dependencies
         working-directory: ${{ env.WORKING_DIR }}/server
         run: |
           npm ci
-          npm install -g typescript
-          tsc
 
       # Deploy client to EC2
       - name: Deploy client to EC2
@@ -85,8 +86,24 @@ jobs:
             # Install TypeScript globally if not present
             npm list -g typescript || npm install -g typescript
 
-            # Compile TypeScript (in case it's needed)
-            npx tsc || echo "TypeScript compilation skipped or failed"
+            # Check if serviceAccount.json exists
+            if [ ! -f serviceAccount.json ]; then
+              echo "❌ Error: serviceAccount.json not found in ${{ env.DEPLOY_PATH_SERVER }}"
+              echo ""
+              echo "To fix this, manually upload the file from your local machine:"
+              echo "scp demos/lec9/server/serviceAccount.json ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ env.DEPLOY_PATH_SERVER }}/"
+              echo ""
+              exit 1
+            fi
+
+            # Compile TypeScript (required for server to run)
+            echo "Compiling TypeScript..."
+            npx tsc
+            if [ $? -ne 0 ]; then
+              echo "❌ TypeScript compilation failed"
+              exit 1
+            fi
+            echo "✅ TypeScript compilation successful"
 
             # Install PM2 globally if not present
             npm list -g pm2 || npm install -g pm2

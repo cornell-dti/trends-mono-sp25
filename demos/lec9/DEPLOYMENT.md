@@ -6,6 +6,45 @@ This project consists of a React client (Vite) and an Express/Firebase backend s
 
 **Note**: We will want to use `npm` as opposed to `pnpm` to get CI to work.
 
+
+### ✅ Fix: Restrict permissions on your PEM
+
+Run this on your Mac:
+
+```bash
+chmod 600 ~/Desktop/mykey.pem
+```
+
+This makes the file **readable/writable only by you**.
+
+---
+
+### 🔑 Then retry SSH
+
+```bash
+ssh -i ~/Desktop/mykey.pem ubuntu@3.144.215.93
+```
+
+And for `scp`:
+
+**Important**: Make sure your .pem file has the correct permissions (see step above):
+```bash
+chmod 600 ~/Desktop/mykey.pem
+```
+
+First, create the directory on the EC2 instance:
+```bash
+ssh -i ~/Desktop/mykey.pem ubuntu@3.144.215.93
+sudo mkdir -p /var/www/lec9-server
+sudo chown ubuntu:ubuntu /var/www/lec9-server
+exit
+```
+
+Then transfer the serviceAccount.json file (use full local path):
+```bash
+scp -i ~/Desktop/mykey.pem ~/Desktop/trends-mono-sp25/demos/lec9/server/serviceAccount.json ubuntu@3.144.215.93:/var/www/lec9-server/
+```
+
 ## Architecture
 
 -   **Client**: React app built with Vite, served via Nginx
