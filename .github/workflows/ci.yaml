@@ -116,11 +116,17 @@ jobs:
             # Kill any hanging TypeScript processes from previous deployments
             pkill -f tsc || true
 
-            # Compile TypeScript with memory limit and timeout (3 minutes)
+            # Compile TypeScript with timeout (3 minutes)
             echo "Compiling TypeScript..."
-            timeout 180s npx tsc --maxNodeModuleJsDepth 1
-            if [ $? -ne 0 ]; then
-              echo "❌ TypeScript compilation failed"
+            timeout 180s npx tsc
+            TSC_EXIT_CODE=$?
+
+            if [ $TSC_EXIT_CODE -eq 124 ]; then
+              echo "❌ TypeScript compilation timed out after 3 minutes"
+              echo "This usually indicates a memory issue. Consider adding swap space to your EC2 instance."
+              exit 1
+            elif [ $TSC_EXIT_CODE -ne 0 ]; then
+              echo "❌ TypeScript compilation failed with exit code $TSC_EXIT_CODE"
               exit 1
             fi
             echo "✅ TypeScript compilation successful"
