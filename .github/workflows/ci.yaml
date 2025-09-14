@@ -116,9 +116,9 @@ jobs:
             fi
 
             # Kill any hanging TypeScript processes from previous deployments
-            echo "Cleaning up any hanging processes..."
-            pkill -f tsc || true
-            pkill -f npm || true
+            echo "Cleaning up any hanging TypeScript processes..."
+            # Only kill tsc processes, not npm (which could kill our own session)
+            pgrep -f "tsc" && pkill -f "tsc" || echo "No hanging tsc processes found"
 
             # Compile TypeScript
             echo "Starting TypeScript compilation..."
