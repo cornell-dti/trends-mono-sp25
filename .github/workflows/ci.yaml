@@ -45,6 +45,18 @@ jobs:
         run: |
           npm ci
 
+      # Create directories on EC2 before deploying
+      - name: Create directories on EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo mkdir -p ${{ env.DEPLOY_PATH_CLIENT }}
+            sudo mkdir -p ${{ env.DEPLOY_PATH_SERVER }}
+            sudo chown -R ${{ secrets.EC2_USER }}:${{ secrets.EC2_USER }} /var/www/
+
       # Deploy client to EC2
       - name: Deploy client to EC2
         uses: easingthemes/ssh-deploy@v4.1.10
