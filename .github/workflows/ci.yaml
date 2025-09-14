@@ -92,9 +92,9 @@ jobs:
             mkdir -p ${{ env.DEPLOY_PATH_CLIENT }}
             mkdir -p ${{ env.DEPLOY_PATH_SERVER }}
 
-            # Install server dependencies
+            # Install ALL server dependencies (including dev deps for TypeScript compilation)
             cd ${{ env.DEPLOY_PATH_SERVER }}
-            npm ci --production
+            npm ci
 
             # Install TypeScript globally if not present
             npm list -g typescript || npm install -g typescript
@@ -121,6 +121,9 @@ jobs:
               exit 1
             fi
             echo "✅ TypeScript compilation successful"
+
+            # Clean up dev dependencies after compilation to save space
+            npm prune --production
 
             # Install PM2 globally if not present
             npm list -g pm2 || npm install -g pm2
