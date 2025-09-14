@@ -163,7 +163,7 @@ jobs:
 
                 # API proxy
                 location /api/ {
-                    proxy_pass http://localhost:5000/;
+                    proxy_pass http://localhost:8080/;
                     proxy_http_version 1.1;
                     proxy_set_header Upgrade \$http_upgrade;
                     proxy_set_header Connection 'upgrade';
@@ -218,7 +218,7 @@ jobs:
               echo "✅ Server is running"
 
               # Try to make a health check request (adjust endpoint as needed)
-              if curl -f http://localhost:5000/health 2>/dev/null; then
+              if curl -f http://localhost:8080/health 2>/dev/null; then
                 echo "✅ Server health check passed"
               else
                 echo "⚠️ Server is running but health check failed or endpoint doesn't exist"
