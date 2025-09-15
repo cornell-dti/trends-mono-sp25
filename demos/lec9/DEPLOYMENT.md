@@ -2,10 +2,12 @@
 
 ## 🚀 Quick Start
 
+This guide deploys a React + Express/Firebase app to EC2 using GitHub Actions CI/CD.
+
 ### Prerequisites
-1. **EC2 Instance** (Ubuntu 22.04 or later)
-2. **GitHub Repository** with secrets configured
-3. **Firebase Project** with serviceAccount.json
+1. **EC2 Instance** (Ubuntu 22.04 or later, t2.micro works)
+2. **GitHub Repository** with this code
+3. **Firebase Project** with serviceAccount.json downloaded
 
 ### Step 1: Configure AWS Security Group
 Add these inbound rules to your EC2 security group:
@@ -51,7 +53,7 @@ In your GitHub repository → Settings → Secrets → Actions → New repositor
 
 **Optional Secrets (have defaults):**
 - `VITE_API_URL`: Leave empty - defaults to window.location.origin (same domain)
-- `SERVER_PORT`: Leave empty - defaults to 8080
+- `SERVER_PORT`: Leave empty - defaults to 8080 (if you change this, update AWS Security Group)
 - `NODE_ENV`: Leave empty - defaults to production
 
 ### Step 4: Upload Service Account (One-time setup)
@@ -67,6 +69,15 @@ git add .
 git commit -m "Deploy"
 git push origin test-ci
 ```
+
+The deployment will:
+1. Build the client with your GitHub Secrets
+2. Deploy files to EC2
+3. Compile TypeScript on EC2
+4. Start the server with PM2
+5. Configure Nginx
+
+Visit `http://YOUR_EC2_IP` to see your deployed app!
 
 ## 📋 Architecture Overview
 
@@ -117,7 +128,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://localhost:8080/;
+        proxy_pass http://localhost:8080/api/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -171,6 +182,23 @@ curl http://localhost:8080/api/
 ### Client JavaScript Error (API_KEY not defined)
 This means `VITE_SUPER_SECRET_KEY` is not set in GitHub Secrets. Add it as described in Step 3.
 
+### Firebase Error: 5 NOT_FOUND
+This error occurs when:
+1. **Wrong Firebase project** - serviceAccount.json doesn't match your Firebase project
+2. **Collections don't exist** - Firebase database hasn't been initialized
+3. **Permissions issue** - Firebase security rules blocking access
+
+**Fix:**
+```bash
+# Verify serviceAccount.json is for the correct project
+cat ~/secrets/serviceAccount.json | grep project_id
+
+# Check Firebase Console:
+# 1. Go to Firebase Console → Your Project → Firestore Database
+# 2. Create database if it doesn't exist (Start in test mode for development)
+# 3. Verify project ID matches serviceAccount.json
+```
+
 ### TypeScript Compilation Fails
 ```bash
 cd /var/www/lec9-server
@@ -181,6 +209,12 @@ npx tsc  # Try compiling manually
 ### Deployment Hangs / SSH Connection Refused
 **This is common on t2.micro instances with limited RAM (1GB)**
 
+**When to Reboot:**
+- SSH connection refused or times out
+- GitHub Action stuck for > 5 minutes
+- EC2 instance becomes unresponsive
+- After multiple failed deployments
+
 **Quick Fix - Reboot EC2:**
 ```bash
 # From AWS Console:
@@ -188,6 +222,12 @@ npx tsc  # Try compiling manually
 
 # Or using AWS CLI:
 aws ec2 reboot-instances --instance-ids YOUR_INSTANCE_ID
+
+# Wait 2-3 minutes for instance to restart
+# Then SSH in and check services:
+ssh ubuntu@YOUR_EC2_IP
+pm2 list
+sudo systemctl status nginx
 ```
 
 **Prevention - Add swap space (see Step 2)**
@@ -277,10 +317,11 @@ pm2 env lec9-server
 
 1. **Environment Variables** are managed through GitHub Secrets (no .env files needed)
 2. **serviceAccount.json** is stored in `~/secrets/` to persist across deployments
-3. **TypeScript compilation** happens on EC2 (not in GitHub Actions)
+3. **TypeScript compilation** happens on EC2 (not in GitHub Actions) to avoid missing serviceAccount.json errors
 4. **Default Nginx site** is automatically removed during deployment
 5. **API URL** defaults to `window.location.origin` (same domain as client)
-6. **Port 8080** is used for the server (not 5000)
+6. **Port 8080** is used for the server (Nginx proxies from port 80 to 8080)
+7. **Memory Management** - Add swap space on t2.micro instances to prevent deployment hangs
 
 ## 🆘 Quick Fixes
 
